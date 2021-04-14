@@ -84,9 +84,9 @@ void set_up_I2C(){
 */
 
 void breakup(int bigNum, uint8_t* low, uint8_t* high){
-    /*
-        Write Task 1 code here
-    */
+    *low  = bigNum & 0xFF;    // bitmask first 8 bits only
+    *high = (bigNum >> 8);    // shift high bits 8 to the right
+    return;
 }
 
 /*
