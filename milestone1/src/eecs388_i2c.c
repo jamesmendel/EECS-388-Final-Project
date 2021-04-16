@@ -109,6 +109,10 @@ void write(uint8_t LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H
     bufWrite[2] = ON_H;
     bufWrite[3] = OFF_L;
     bufWrite[4] = OFF_H;
+    printf("WRITE BUFFER:\n");
+    for(uint8_t i = 0; i<5; i++){
+        printf("\tBuffer[%i]: %x\n",i, bufWrite[i]);
+    }
     metal_i2c_write(i2c, PCA9685_I2C_ADDRESS, 5, bufWrite, METAL_I2C_STOP_ENABLE);
     return;
 }
@@ -149,7 +153,7 @@ void steering(int angle){
 int main()
 {
     set_up_I2C();
-    for(uint8_t i = 0; i < 5; i++){
+    for(uint8_t i = 0; i < 1; i++){
         printf("LOOP: %i\n", i);
         printf("Steering: 0\n");
         steering(0);
