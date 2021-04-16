@@ -85,7 +85,7 @@ void set_up_I2C(){
 
 void breakup(int bigNum, uint8_t* low, uint8_t* high){
     *low  = bigNum & 0xFF;    // bitmask first 8 bits only
-    *high = (bigNum >> 8);    // shift high bits 8 to the right
+    *high = bigNum >> 8;    // shift high bits 8 to the right
     return;
 }
 
@@ -103,10 +103,14 @@ void breakup(int bigNum, uint8_t* low, uint8_t* high){
     write(PCA9685_LED1_ON_L, 0, 0, variable1, variable2);
 */
 
-void write(int LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H){
-    /*
-        Write Task 2 code here
-    */
+void write(uint8_t LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H){
+    bufWrite[0] = LED;
+    bufWrite[1] = ON_L;
+    bufWrite[2] = ON_H;
+    bufWrite[3] = OFF_L;
+    bufWrite[4] = OFF_H;
+    metal_i2c_write(i2c, PCA9685_I2C_ADDRESS, 5, bufWrite, METAL_I2C_STOP_ENABLE);
+    return;
 }
 
 /*
@@ -133,15 +137,30 @@ void write(int LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H){
 */
 
 void steering(int angle){
-    /*
-        Write Task 3 code here
-    */
+    uint8_t ang_off_l, ang_off_h;
+
+    uint16_t ang_off_cycles = getServoCycle(angle);
+    printf("ANGLE ON DURATION (cycles): %i\n", ang_off_cycles); //DEBUG! REMOVE ME
+    breakup(ang_off_cycles, &ang_off_l, &ang_off_h);    //Breakup into bytes
+    write(PCA9685_LED1_ON_L, 0x00, 0x00, ang_off_l, ang_off_h); //Write to I2C controller
+    return;
 }
 
 int main()
 {
     set_up_I2C();
-
+    for(uint8_t i = 0; i < 5; i++){
+        printf("LOOP: %i\n", i);
+        printf("Steering: 0\n");
+        steering(0);
+        delay(1000);
+        printf("Steering: -45\n");
+        steering(-45);
+        delay(1000);
+        printf("Steering: 45\n");
+        steering(45);
+        delay(1000);
+    }
     /*
         Partially Controlling the PCA9685
 
