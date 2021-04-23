@@ -3,6 +3,8 @@
 #include "eecs388_lib.h"
 #include "metal/i2c.h"
 
+#define DEBUG true
+
 struct metal_i2c *i2c;
 
 #define bufWriteSize 5
@@ -68,15 +70,41 @@ void set_up_I2C(){
 } 
 
 void breakup(int bigNum, uint8_t* low, uint8_t* high){
-    
+    *low  = bigNum & 0xFF;    // bitmask first 8 bits only
+    *high = bigNum >> 8;      // shift high bits 8 to the right
+    return;
 }
 
-void write(int LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H){
+void write(uint8_t LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H){
+    bufWrite[0] = LED;
+    bufWrite[1] = ON_L;
+    bufWrite[2] = ON_H;
+    bufWrite[3] = OFF_L;
+    bufWrite[4] = OFF_H;
     
+    metal_i2c_write(i2c, PCA9685_I2C_ADDRESS, 5, bufWrite, METAL_I2C_STOP_ENABLE);
+    
+    #ifdef DEBUG
+        printf("WRITE BUFFER:\n");
+        for(uint8_t i = 0; i<5; i++){
+            printf("\tBuffer[%i]: %x\n",i, bufWrite[i]);
+        }
+    #endif
+    return;
 }
 
 void steering(int angle){
+    uint8_t ang_off_l, ang_off_h;
+
+    uint16_t ang_off_cycles = getServoCycle(angle);
+    breakup(ang_off_cycles, &ang_off_l, &ang_off_h);    //Breakup into bytes
+    write(PCA9685_LED1_ON_L, 0x00, 0x00, ang_off_l, ang_off_h); //Write to I2C controller
     
+    #ifdef DEBUG
+        printf("ANGLE ON DURATION (cycles): %i\n", ang_off_cycles); //DEBUG! REMOVE ME
+    #endif
+    
+    return;
 }
 
 /*
@@ -96,9 +124,9 @@ void steering(int angle){
 */
 void stopMotor()
 {
-    /*
-       Write Task 1 code here
-    */
+    uint8_t stop_l stop_h;
+    breakup(280, &stop_l, &stop_h)
+    write(PCA9685_LED0_ON_L, 0x00, 0x00, stop_l, stop_h);
 }
 
 /*
@@ -121,12 +149,23 @@ void stopMotor()
 
 void driveForward(uint8_t speedFlag)
 {
+    uint8_t speed_l, speed_h;
+    uint8_t val_to_write = 303;
 
+    if (speedFlag <= 3 && speedFlag > 0)
+        val_to_write += (speedFlag - 1) * 2;
+    breakup(val_to_write, &speed_l, &speed_h);
+
+    write(PCA9685_LED0_ON_L, 0x00, 0x00, speed_l, speed_h);
 }
 
 void raspberrypi_int_handler(int devid)
 {
-
+    // Message from pi
+	char pi_msg[64];
+	// read from uart[devid] up to 64 chars and store in pi_msg
+    ser_readline(devid, 64, pi_msg);
+	sscanf(pi_msg, "%d", &g_angle); //update g_angle to the int value of pi_msg 
 }
 
 int main()
@@ -144,18 +183,19 @@ int main()
     // 2. Delay
     // 3. Stop Motor
     // 4. Begin main loop
+    
+    stopMotor();
+    delay(2000);
+    stopMotor();
 
     while (1) {
-        /*
 
-        if (is UART ready?)
-        {
-            g_angle = read from UART.
+        if(ser_isready(1) & 0b10){
+            raspberrypi_int_handler(1);
         }
 
         steering(g_angle);
 
-        */
     }
     
 }

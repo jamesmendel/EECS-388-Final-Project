@@ -10,6 +10,7 @@ import os
 import time
 import math
 import numpy as np
+import serial
 
 # Radian <-> Degree conversion functions
 def deg2rad(deg):
@@ -41,6 +42,9 @@ sess = tf.InteractiveSession(config=config)
 saver = tf.train.Saver()
 model_load_path = "model/model.ckpt"
 saver.restore(sess, model_load_path)
+
+#Open serial connection with HiFive
+ser1 = serial.Serial('/dev/ttyAMA1', 115200)
 
 #Create lists for tracking operation timings
 cap_time_list = []
@@ -78,7 +82,7 @@ while(1):
 		
 		#Feed the frame to the model and get the control output
 		rad = model.y.eval(feed_dict={model.x: [img]})[0][0]
-		deg = rad2deg(rad)
+		ser1.write(bytes(deg2rad(rad)))
 		pred_end   = time.time()
 
 		#Calculate the timings for each step
@@ -104,6 +108,7 @@ while(1):
 		break
 	
 cap.release()
+ser1.close()
 
 #Calculate and output FPS/frequency
 fps = curFrame / (time.time() - time_start)
