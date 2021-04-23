@@ -82,7 +82,8 @@ while(1):
 		
 		#Feed the frame to the model and get the control output
 		rad = model.y.eval(feed_dict={model.x: [img]})[0][0]
-		ser1.write(bytes(deg2rad(rad)))
+		deg = rad2deg(rad)
+		ser1.write(bytes(deg)+'\n')
 		pred_end   = time.time()
 
 		#Calculate the timings for each step
