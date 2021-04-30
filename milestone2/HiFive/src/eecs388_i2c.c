@@ -84,12 +84,12 @@ void write(uint8_t LED, uint8_t ON_L, uint8_t ON_H, uint8_t OFF_L, uint8_t OFF_H
     
     metal_i2c_write(i2c, PCA9685_I2C_ADDRESS, 5, bufWrite, METAL_I2C_STOP_ENABLE);
     
-    #ifdef DEBUG
-        printf("WRITE BUFFER:\n");
-        for(uint8_t i = 0; i<5; i++){
-            printf("\tBuffer[%i]: %x\n",i, bufWrite[i]);
-        }
-    #endif
+    // #ifdef DEBUG
+    //     printf("WRITE BUFFER:\n");
+    //     for(uint8_t i = 0; i<5; i++){
+    //         printf("\tBuffer[%i]: %x\n",i, bufWrite[i]);
+    //     }
+    // #endif
     return;
 }
 
@@ -101,7 +101,8 @@ void steering(int angle){
     write(PCA9685_LED1_ON_L, 0x00, 0x00, ang_off_l, ang_off_h); //Write to I2C controller
     
     #ifdef DEBUG
-        printf("ANGLE ON DURATION (cycles): %i\n", ang_off_cycles); //DEBUG! REMOVE ME
+        printf("STEERING ANGLE (degrees)  : %i\n", g_angle);
+        printf("ANGLE ON DURATION (cycles): %i\n", ang_off_cycles);
     #endif
     
     return;
@@ -150,7 +151,7 @@ void stopMotor()
 void driveForward(uint8_t speedFlag)
 {
     uint8_t speed_l, speed_h;
-    uint8_t val_to_write = 303;
+    uint16_t val_to_write = 303;
 
     if (speedFlag <= 3 && speedFlag > 0)
         val_to_write += (speedFlag - 1) * 2;
@@ -162,10 +163,22 @@ void driveForward(uint8_t speedFlag)
 void raspberrypi_int_handler(int devid)
 {
     // Message from pi
-	char pi_msg[64];
-	// read from uart[devid] up to 64 chars and store in pi_msg
-    ser_readline(devid, 64, pi_msg);
-	sscanf(pi_msg, "%d", &g_angle); //update g_angle to the int value of pi_msg 
+	char pi_msg[24] = "\0";
+    char* key = "angle:";
+    int length = 6;  //length of key
+	int ret;
+    
+    // read from uart[devid] up to 24 chars and store in pi_msg
+    ser_readline(devid, 24, pi_msg);
+    ser_printline(0, pi_msg);
+    // printf("PI_MESSAGE: %s\n", pi_msg);
+    //printf("PI_MESSAGE:");
+    // for(int i = 0; i < 24; i++){
+    //     printf("%c",pi_msg[i]);
+    // }
+    ret = strncmp(pi_msg, key, length);
+    if (ret == 0)   // only change steering angle if msg matches key
+        sscanf(pi_msg+length, "%d", &g_angle); // update g_angle to the int value of pi_msg 
 }
 
 int main()
@@ -175,6 +188,7 @@ int main()
 
     // initialize UART channels
     ser_setup(1); // uart1 (raspberry pi)
+    ser_setup(0); // uart0 (hifive)
 
     // Initialize global angle
     g_angle = 0;
@@ -184,17 +198,21 @@ int main()
     // 3. Stop Motor
     // 4. Begin main loop
     
+    printf("Ready for calibration...\n");
     stopMotor();
+    delay(2500);
+    printf("Calibration window closed. Initializing.\n");
+    driveForward(2);
     delay(2000);
     stopMotor();
 
     while (1) {
 
-        if(ser_isready(1) & 0b10){
-            raspberrypi_int_handler(1);
+        if(ser_isready(0) & 0b10){
+            raspberrypi_int_handler(0);
+            steering(g_angle);
         }
 
-        steering(g_angle);
 
     }
     

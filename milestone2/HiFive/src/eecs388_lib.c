@@ -123,14 +123,15 @@ int ser_readline(int devid, int n, char *str)
 {
   int i = 0; 
   for (i = 0; i < n; i++) {
-    str[i] = ser_read(devid);
-    ser_write(0, str[i]);
-    if (str[i] == '\r' || str[i] == '\n') {
-      str[i] = 0;
-      return i;      
-    } 
+    if(ser_isready(devid)){
+      str[i] = ser_read(devid);
+      if (str[i] == '\r' || str[i] == '\n') {
+        str[i] = '\0';
+        return i;      
+      } 
+    }
   }
-  str[i-1] = 0;
+  str[i-1] = '\0';
   return i; 
 }
 
