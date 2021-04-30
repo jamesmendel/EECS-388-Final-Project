@@ -43,14 +43,14 @@ saver = tf.train.Saver()
 model_load_path = "model/model.ckpt"
 saver.restore(sess, model_load_path)
 
-#Open serial connection with HiFive
-ser1 = serial.Serial('/dev/ttyAMA1', 115200)
-
 #Create lists for tracking operation timings
 cap_time_list = []
 prep_time_list = []
 pred_time_list = []
 tot_time_list = []
+
+#Initialize serial connection to HiFive board
+ser1 = serial.Serial('/dev/ttyAMA1', 115200)
 
 print('---------- Processing video for epoch 1 ----------')
 
@@ -83,7 +83,6 @@ while(1):
 		#Feed the frame to the model and get the control output
 		rad = model.y.eval(feed_dict={model.x: [img]})[0][0]
 		deg = rad2deg(rad)
-		ser1.write(bytes(deg)+'\n')
 		pred_end   = time.time()
 
 		#Calculate the timings for each step
@@ -91,10 +90,11 @@ while(1):
 		prep_time = (pred_start - prep_start)*1000
 		pred_time = (pred_end - pred_start)*1000
 		tot_time  = (pred_end - cam_start)*1000
-
+                
+                ser1.write("angle:"+str(int(deg))+"\n")
 		print('pred: {:0.2f} deg. took: {:0.2f} ms | cam={:0.2f} prep={:0.2f} pred={:0.2f}'.format(deg, tot_time, cam_time, prep_time, pred_time))
 		
-		#Don't include the timings for the first frame due to cache warmup
+                #Don't include the timings for the first frame due to cache warmup
 		if first_frame:
 			first_frame = False
 		else:
@@ -109,7 +109,7 @@ while(1):
 		break
 	
 cap.release()
-ser1.close()
+ser1.close() #close serial connection to HiFive
 
 #Calculate and output FPS/frequency
 fps = curFrame / (time.time() - time_start)
