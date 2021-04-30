@@ -124,8 +124,8 @@ void steering(int angle){
 */
 void stopMotor()
 {
-    uint8_t stop_l stop_h;
-    breakup(280, &stop_l, &stop_h)
+    uint8_t stop_l, stop_h;
+    breakup(280, &stop_l, &stop_h);
     write(PCA9685_LED0_ON_L, 0x00, 0x00, stop_l, stop_h);
 }
 
